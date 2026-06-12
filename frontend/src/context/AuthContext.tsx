@@ -34,7 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const apiUrl = 'http://localhost:5000/api';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
 
   useEffect(() => {
     const storedToken = localStorage.getItem('riya_touch_token');
