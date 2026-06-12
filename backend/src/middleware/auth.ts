@@ -14,7 +14,7 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction) 
       return res.status(401).json({ message: 'No authentication token, access denied' });
     }
 
-    const JWT_SECRET = process.env.JWT_SECRET || 'riyatouch_wholesale_secret_key_2026_jwt';
+    const JWT_SECRET = process.env.JWT_SECRET || 'ISsY6b+/8xX7PK0X0P31hOy+ug1i3whEK+h+uoXZA6o=';
     const decoded: any = jwt.verify(token, JWT_SECRET);
     
     const user = await User.findById(decoded.id).select('-password');
