@@ -20,7 +20,7 @@ export default function CheckoutPage() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [pincode, setPincode] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'Bank Transfer'>('COD');
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'Bank Transfer' | 'Razorpay'>('COD');
   
   // App States
   const [isOrdering, setIsOrdering] = useState(false);
@@ -104,6 +104,47 @@ export default function CheckoutPage() {
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.message || 'Error placing order');
+      }
+
+      if (data.paymentMethod === 'Razorpay') {
+        const paymentRes = await fetch(`${apiUrl}/payment/create-order`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ orderId: data._id })
+        });
+        const paymentData = await paymentRes.json();
+        if (paymentRes.ok && (window as any).Razorpay) {
+          const rzp = new (window as any).Razorpay({
+            key: paymentData.key,
+            amount: paymentData.amount,
+            currency: paymentData.currency,
+            name: 'Riya Touch Wholesale',
+            description: `Order #${data._id}`,
+            order_id: paymentData.id,
+            handler: async (response: any) => {
+              await fetch(`${apiUrl}/payment/verify`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(response)
+              });
+              setOrderSuccess(data);
+              clearCart();
+            },
+            modal: {
+              ondismiss: () => setError('Payment cancelled. Your order is pending.')
+            }
+          });
+          rzp.open();
+        } else {
+          setError('Payment gateway unavailable. Your order is saved.');
+        }
+        return;
       }
 
       setOrderSuccess(data);
@@ -358,6 +399,23 @@ export default function CheckoutPage() {
                 <div className="text-xs">
                   <h4 className="font-bold text-stone-900">Direct Bank / UPI Transfer</h4>
                   <p className="text-stone-500 mt-1">Transfer directly to our HDFC corporate account or business UPI ID.</p>
+                </div>
+              </label>
+
+              {/* Razorpay */}
+              <label className={`border rounded-lg p-4 flex items-start space-x-3 cursor-pointer transition ${
+                paymentMethod === 'Razorpay' ? 'border-rose-900 bg-rose-50/20' : 'border-stone-200 hover:bg-stone-50'
+              }`}>
+                <input
+                  type="radio"
+                  name="payment"
+                  checked={paymentMethod === 'Razorpay'}
+                  onChange={() => setPaymentMethod('Razorpay')}
+                  className="mt-1 text-rose-900 focus:ring-rose-900"
+                />
+                <div className="text-xs">
+                  <h4 className="font-bold text-stone-900">Pay Online (Card / UPI / NetBanking)</h4>
+                  <p className="text-stone-500 mt-1">Secure instant payment via Razorpay — cards, UPI, or net banking.</p>
                 </div>
               </label>
 

@@ -7,6 +7,8 @@ import mongoose from 'mongoose';
 import authRoutes from './routes/authRoutes';
 import productRoutes from './routes/productRoutes';
 import orderRoutes from './routes/orderRoutes';
+import uploadRoutes from './routes/uploadRoutes';
+import paymentRoutes from './routes/paymentRoutes';
 import logger from './utils/logger';
 
 dotenv.config();
@@ -83,6 +85,8 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // 404 handler
 app.use((req, res) => {

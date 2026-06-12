@@ -64,7 +64,7 @@ const OrderSchema = new Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['COD', 'Bank Transfer', 'WhatsApp Checkout'],
+    enum: ['COD', 'Bank Transfer', 'UPI', 'Razorpay', 'WhatsApp Checkout'],
     required: true
   },
   paymentStatus: {
@@ -75,6 +75,10 @@ const OrderSchema = new Schema({
   paymentReceipt: {
     type: String, // URL of uploaded receipt screenshot
     default: ''
+  },
+  paymentDetails: {
+    type: Schema.Types.Mixed, // Razorpay order/payment IDs
+    default: {}
   },
   status: {
     type: String,
