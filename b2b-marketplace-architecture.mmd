@@ -1,0 +1,170 @@
+---
+title: Design an E-Commerce Marketplace Platform - Functional Diagram
+---
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'background': '#ffffff',
+      'primaryColor': '#DBEAFE',
+      'primaryBorderColor': '#3B82F6',
+      'primaryTextColor': '#1E293B',
+      'lineColor': '#64748B',
+      'secondaryColor': '#FEF3C7',
+      'tertiaryColor': '#FCE7F3',
+      'fontSize': '13px'
+    }
+  }
+}%%
+
+graph TB
+
+    %% ============================================================
+    %% CUSTOM STYLE CLASSES
+    %% ============================================================
+    classDef actor fill:#EFF6FF,stroke:#2563EB,stroke-width:2px,rx:8,color:#1E293B,font-size:13px
+    classDef core fill:#DBEAFE,stroke:#3B82F6,stroke-width:2px,rx:8,color:#1E293B,font-size:13px
+    classDef business fill:#DBEAFE,stroke:#3B82F6,stroke-width:2px,rx:8,color:#1E293B,font-size:13px
+    classDef database fill:#FEF3C7,stroke:#F59E0B,stroke-width:2px,rx:4,color:#1E293B,font-size:13px
+    classDef external fill:#FCE7F3,stroke:#EC4899,stroke-width:2px,rx:8,color:#1E293B,font-size:13px
+    classDef mqnode fill:#EDE9FE,stroke:#8B5CF6,stroke-width:2px,rx:8,color:#1E293B,font-size:13px
+    classDef titleStyle fill:none,stroke:none,font-size:20px,font-weight:bold,color:#0F172A
+    classDef noteItem fill:#F8FAFC,stroke:#CBD5E1,stroke-dasharray:6 3,rx:4,color:#334155,font-size:12px,text-align:left
+    classDef subgraphStyle fill:#FFFFFF,stroke:#E2E8F0,stroke-width:1px,color:#475569
+
+    %% ============================================================
+    %% TITLE
+    %% ============================================================
+    Title["Design an E-Commerce Marketplace Platform - Functional Diagram"]:::titleStyle
+
+    %% ============================================================
+    %% TOP ROW: ACTORS | CORE PLATFORM | BUSINESS SERVICES
+    %% ============================================================
+    subgraph TopRow[" "]
+        direction LR
+
+        %% ---- LEFT COLUMN: ACTORS ----
+        subgraph Actors["👥  Actors"]
+            direction TB
+            A1["Marketplace Admin"]:::actor
+            A2["Web Customer"]:::actor
+            A3["Mobile Customer"]:::actor
+            A4["Shipping &<br/>Logistics Partner"]:::actor
+        end
+
+        %% ---- CENTER COLUMN: CORE PLATFORM LAYER ----
+        subgraph CorePlatform["⚙️  Core Platform Layer"]
+            direction TB
+            API["API Gateway"]:::core
+            WebApp["Web Application Service"]:::core
+            Orders["Orders Service"]:::core
+            OrderRecov["Order Recovery Service"]:::core
+            PMS["Product Management<br/>System"]:::core
+            PMSSQL[("SQL Database")]:::database
+            ObjStore["Object Storage"]:::core
+            MQ["Message Queue /<br/>Event Bus"]:::mqnode
+            BatchProc["Batch Processing<br/>Service"]:::core
+            StreamProc["Stream Processing<br/>Service"]:::core
+        end
+
+        %% ---- RIGHT COLUMN: BUSINESS SERVICES LAYER ----
+        subgraph BizServices["📦  Business Services Layer"]
+            direction TB
+            ProdSvc["Products Service"]:::business
+            SearchSvc["Product Search<br/>Service"]:::business
+            InvSvc["Inventory Service"]:::business
+            TaxSvc["Tax Service"]:::business
+            PaySvc["Payment Service"]:::business
+            ShipSvc["Shipping Service"]:::business
+            NotifSvc["Notification Service"]:::business
+        end
+    end
+
+    %% ============================================================
+    %% BOTTOM ROW: DATA STORES | EXTERNAL INTEGRATIONS
+    %% ============================================================
+    subgraph BottomRow[" "]
+        direction LR
+
+        %% ---- LEFT: DATA STORES ----
+        subgraph DataStores["🗄️  Data Stores"]
+            direction TB
+            DocDB[("Document Database")]:::database
+            SearchDB[("Search Database<br/>(Elasticsearch)")]:::database
+            KVStore[("Key-Value Store<br/>(Redis / DynamoDB)")]:::database
+            NoSQLDB[("NoSQL Database")]:::database
+        end
+
+        %% ---- RIGHT: EXTERNAL INTEGRATIONS ----
+        subgraph ExtIntegrations["🔗  External Integrations"]
+            direction TB
+            PayGate["External Payment<br/>Gateway"]:::external
+            LogProv["External Logistics<br/>Provider"]:::external
+            EmailProv["Email Provider"]:::external
+            SMSProv["SMS Provider"]:::external
+            PushProv["Push Notification<br/>Provider"]:::external
+        end
+    end
+
+    %% ============================================================
+    %% NOTES SECTION
+    %% ============================================================
+    subgraph NotesSection["📝  Notes"]
+        direction TB
+        N1["•  API Gateway handles authentication, routing, and rate limiting."]:::noteItem
+        N2["•  Orders Service orchestrates checkout workflows."]:::noteItem
+        N3["•  Event-driven communication through message queues."]:::noteItem
+        N4["•  Search service maintains indexed product catalog."]:::noteItem
+        N5["•  Inventory service ensures stock consistency."]:::noteItem
+        N6["•  Payment and shipping use external third-party providers."]:::noteItem
+        N7["•  Notification service sends order and delivery updates."]:::noteItem
+    end
+
+    %% ============================================================
+    %% EDGES: ACTORS → API GATEWAY
+    %% ============================================================
+    A1 -->|"manages"| API
+    A2 -->|"browses / orders"| API
+    A3 -->|"browses / orders"| API
+    A4 -->|"receives shipments"| API
+
+    %% ============================================================
+    %% EDGES: CORE PLATFORM INTERNAL
+    %% ============================================================
+    API -->|"routes requests"| WebApp
+    API -->|"routes requests"| Orders
+    WebApp -->|"manages catalog"| PMS
+    PMS -.->|"persists"| PMSSQL
+    Orders --->|"recovers"| OrderRecov
+    Orders -.->|"publishes events"| MQ
+    MQ -.->|"triggers"| BatchProc
+    MQ -.->|"triggers"| StreamProc
+    PMS -->|"stores assets"| ObjStore
+
+    %% ============================================================
+    %% EDGES: CORE → BUSINESS SERVICES (EVENT-DRIVEN)
+    %% ============================================================
+    MQ -.->|"product events"| ProdSvc
+    MQ -.->|"sync events"| SearchSvc
+    MQ -.->|"stock events"| InvSvc
+    MQ -.->|"tax events"| TaxSvc
+    Orders -->|"orchestrates"| PaySvc
+    Orders -->|"orchestrates"| ShipSvc
+    Orders -.->|"notifies"| NotifSvc
+
+    %% ============================================================
+    %% EDGES: BUSINESS SERVICES → DATA STORES
+    %% ============================================================
+    ProdSvc -->|"CRUD"| DocDB
+    SearchSvc -->|"indexes / queries"| SearchDB
+    InvSvc -->|"reads / writes"| KVStore
+    TaxSvc -->|"calculates"| NoSQLDB
+
+    %% ============================================================
+    %% EDGES: BUSINESS SERVICES → EXTERNAL
+    %% ============================================================
+    PaySvc -->|"charges"| PayGate
+    ShipSvc -->|"dispatches"| LogProv
+    NotifSvc -->|"email"| EmailProv
+    NotifSvc -->|"sms"| SMSProv
+    NotifSvc -->|"push"| PushProv

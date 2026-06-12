@@ -1,0 +1,391 @@
+---
+title: Software Architecture & Design of Large Scale Systems
+---
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'actorBorder': '#475569',
+      'actorTextColor': '#1E293B',
+      'actorBoxColor': '#F1F5F9',
+      'signalColor': '#475569',
+      'signalTextColor': '#1E293B',
+      'labelBoxBorderColor': '#CBD5E1',
+      'labelBoxColor': '#F8FAFC',
+      'loopTextColor': '#475569',
+      'noteBorderColor': '#CBD5E1',
+      'noteTextColor': '#334155',
+      'activationBorderColor': '#94A3B8',
+      'activationBackgroundColor': '#E2E8F0',
+      'sequenceNumberColor': '#64748B'
+    }
+  }
+}%%
+
+sequenceDiagram
+    autonumber
+
+    %% ============================================================
+    %% PARTICIPANTS WITH LIFELINE COLORS (via box styling)
+    %% ============================================================
+    actor Customer as "👤 Customer"
+    actor Merchant as "🏪 Merchant / Seller"
+    participant UI as "🖥️ User Interface" order 3
+    participant Gateway as "🚪 API Gateway" order 4
+    participant Auth as "🔐 Auth Service" order 5
+    participant Product as "📦 Product Service" order 6
+    participant Search as "🔍 Search Service" order 7
+    participant Cart as "🛒 Cart Service" order 8
+    participant Order as "📋 Order Management" order 9
+    participant Payment as "💳 Payment Service" order 10
+    participant ShipInv as "📦 Shipping & Inventory" order 11
+    participant Analytics as "📊 Analytics Service" order 12
+    participant Notif as "🔔 Notification Service" order 13
+    participant DB as "🗄️ Database (MongoDB)" order 14
+    participant Cache as "⚡ Cache (Redis)" order 15
+
+    %% ============================================================
+    %% SECTION 1: SELLER REGISTRATION & AUTHENTICATION
+    %% ============================================================
+    rect rgb(238, 242, 255)
+    Note over Merchant,Cache: SELLER REGISTRATION & AUTHENTICATION
+
+    Merchant->>UI: Sign Up / Register
+    activate UI
+    UI->>Gateway: POST /api/auth/register
+    activate Gateway
+    Gateway->>Auth: Forward registration
+    activate Auth
+    Auth->>DB: Store seller credentials (bcrypt hash)
+    activate DB
+    DB-->>Auth: User created
+    deactivate DB
+    Auth->>Notif: Send verification OTP
+    activate Notif
+    Notif-->>Merchant: Verification code (Email/Phone)
+    deactivate Notif
+    Auth-->>Gateway: Account pending verification
+    deactivate Auth
+    Gateway-->>UI: Verification required
+    deactivate Gateway
+
+    Merchant->>UI: Submit verification code
+    activate UI
+    UI->>Gateway: POST /api/auth/verify
+    activate Gateway
+    Gateway->>Auth: Validate OTP
+    activate Auth
+    Auth->>DB: Mark email/phone verified
+    activate DB
+    DB-->>Auth: Confirmed
+    deactivate DB
+    Auth-->>Gateway: Account verified
+    deactivate Auth
+    Gateway-->>UI: Verification success
+    deactivate Gateway
+    UI-->>Merchant: Account created
+    deactivate UI
+
+    Merchant->>UI: Login
+    activate UI
+    UI->>Gateway: POST /api/auth/login
+    activate Gateway
+    Gateway->>Auth: Authenticate credentials
+    activate Auth
+    Auth->>DB: Verify email + password
+    activate DB
+    DB-->>Auth: Valid credentials
+    deactivate DB
+    Auth->>Auth: Generate JWT (access + refresh)
+    Auth-->>Gateway: JWT token pair
+    deactivate Auth
+    Gateway-->>UI: Set tokens (HttpOnly cookie)
+    deactivate Gateway
+    UI-->>Merchant: Logged in
+    deactivate UI
+    end
+
+    %% ============================================================
+    %% SECTION 2: PRODUCT & INVENTORY MANAGEMENT (SELLER)
+    %% ============================================================
+    rect rgb(240, 253, 244)
+    Note over Merchant,Cache: PRODUCT & INVENTORY MANAGEMENT
+
+    Merchant->>UI: Create Product
+    activate UI
+    UI->>Gateway: POST /api/products (JWT + FormData)
+    activate Gateway
+    Gateway->>Auth: Validate JWT token
+    activate Auth
+    Auth-->>Gateway: Authorized (seller role)
+    deactivate Auth
+    Gateway->>Product: Forward product payload
+    deactivate Gateway
+    activate Product
+    Product->>Product: Upload images to Cloudinary CDN
+    Note over Product: Images stored on Cloudinary,<br/>served via Cloudflare CDN
+    Product->>DB: Save product document
+    activate DB
+    DB-->>Product: Product created
+    deactivate DB
+    Product->>Cache: Invalidate product cache
+    activate Cache
+    Cache-->>Product: Cache cleared
+    deactivate Cache
+    Product-->>UI: Product created successfully
+    deactivate Product
+    UI-->>Merchant: Product listed
+    deactivate UI
+
+    Merchant->>UI: Update Stock / Inventory
+    activate UI
+    UI->>Gateway: PATCH /api/inventory/:productId
+    activate Gateway
+    Gateway->>Auth: Validate JWT
+    activate Auth
+    Auth-->>Gateway: Authorized
+    deactivate Auth
+    Gateway->>ShipInv: Forward stock update
+    deactivate Gateway
+    activate ShipInv
+    ShipInv->>DB: Update inventory count
+    activate DB
+    DB-->>ShipInv: Inventory updated
+    deactivate DB
+    ShipInv->>Cache: Refresh stock in cache
+    activate Cache
+    Cache-->>ShipInv: Cache refreshed
+    deactivate Cache
+    ShipInv-->>UI: Stock confirmed
+    deactivate ShipInv
+    UI-->>Merchant: Inventory updated
+    deactivate UI
+    end
+
+    %% ============================================================
+    %% SECTION 3: SELLER ANALYTICS & NOTIFICATIONS
+    %% ============================================================
+    rect rgb(254, 243, 199)
+    Note over Merchant,Notif: ANALYTICS & ORDER NOTIFICATIONS
+
+    Merchant->>UI: View Sales Analytics
+    activate UI
+    UI->>Gateway: GET /api/analytics/sales
+    activate Gateway
+    Gateway->>Auth: Validate JWT
+    activate Auth
+    Auth-->>Gateway: Authorized
+    deactivate Auth
+    Gateway->>Analytics: Fetch aggregated data
+    deactivate Gateway
+    activate Analytics
+    Analytics->>DB: Aggregate sales metrics
+    activate DB
+    DB-->>Analytics: Sales data
+    deactivate DB
+    Analytics-->>UI: Analytics report
+    deactivate Analytics
+    UI-->>Merchant: Sales dashboard
+    deactivate UI
+
+    Notif->>Merchant: New order received (WhatsApp)
+    activate Notif
+    Note over Notif: Real-time notification via<br/>Email + WhatsApp API
+    Notif-->>Merchant: Order details
+    deactivate Notif
+    end
+
+    %% ============================================================
+    %% SECTION 4: PRODUCT BROWSING & SEARCH (CUSTOMER)
+    %% ============================================================
+    rect rgb(239, 246, 255)
+    Note over Customer,Cache: PRODUCT BROWSING & DISCOVERY
+
+    Customer->>UI: Browse / Search Products
+    activate UI
+    UI->>Gateway: GET /api/products?q=&filters=
+    activate Gateway
+    Gateway->>Auth: Validate JWT (optional)
+    activate Auth
+    Auth-->>Gateway: Token valid / guest
+    deactivate Auth
+    Gateway->>Search: Forward search query
+    deactivate Gateway
+    activate Search
+    Search->>Search: Parse query + apply filters
+    alt Cache hit
+        Search->>Cache: Check cached results
+        activate Cache
+        Cache-->>Search: Cached product list
+        deactivate Cache
+    else Cache miss
+        Search->>DB: Full-text search + filters
+        activate DB
+        DB-->>Search: Matching products
+        deactivate DB
+        Search->>Cache: Store results (TTL)
+        activate Cache
+        Cache-->>Search: Cached
+        deactivate Cache
+    end
+    Search-->>UI: Product results list
+    deactivate Search
+    UI-->>Customer: Browse results
+    deactivate UI
+
+    Customer->>UI: View Product Details
+    activate UI
+    UI->>Gateway: GET /api/products/:id
+    activate Gateway
+    alt Cache hit
+        Gateway->>Cache: Check product cache
+        activate Cache
+        Cache-->>Gateway: Cached product detail
+        deactivate Cache
+    else Cache miss
+        Gateway->>Product: Fetch product by ID
+        activate Product
+        Product->>DB: Query product
+        activate DB
+        DB-->>Product: Product document
+        deactivate DB
+        Product->>Cache: Cache product data
+        activate Cache
+        Cache-->>Product: Cached
+        deactivate Cache
+        Product-->>Gateway: Product detail
+        deactivate Product
+    end
+    Gateway-->>UI: Product details + images
+    deactivate Gateway
+    UI-->>Customer: Full product page
+    deactivate UI
+    end
+
+    %% ============================================================
+    %% SECTION 5: CART MANAGEMENT
+    %% ============================================================
+    rect rgb(253, 242, 248)
+    Note over Customer,Cache: CART MANAGEMENT
+
+    Customer->>UI: Add Product to Cart
+    activate UI
+    UI->>Gateway: POST /api/cart (JWT)
+    activate Gateway
+    Gateway->>Auth: Validate JWT
+    activate Auth
+    Auth-->>Gateway: Authorized
+    deactivate Auth
+    Gateway->>Cart: Add item to cart
+    deactivate Gateway
+    activate Cart
+    Cart->>DB: Upsert cart document
+    activate DB
+    DB-->>Cart: Cart saved
+    deactivate DB
+    Cart-->>UI: Updated cart
+    deactivate Cart
+    UI-->>Customer: Cart updated
+    deactivate UI
+
+    Customer->>UI: Update Cart Quantity
+    activate UI
+    UI->>Gateway: PUT /api/cart/:itemId
+    activate Gateway
+    Gateway->>Cart: Update quantity
+    activate Cart
+    Cart->>DB: Modify item quantity
+    activate DB
+    DB-->>Cart: Quantity updated
+    deactivate DB
+    Cart-->>Gateway: Cart refreshed
+    deactivate Cart
+    Gateway-->>UI: New cart state
+    deactivate Gateway
+    UI-->>Customer: Quantity changed
+    deactivate UI
+    end
+
+    %% ============================================================
+    %% SECTION 6: CHECKOUT & ORDER CREATION
+    %% ============================================================
+    rect rgb(245, 243, 255)
+    Note over Customer,Cache: CHECKOUT & ORDER CREATION
+
+    Customer->>UI: Proceed to Checkout
+    UI->>Gateway: POST /api/orders/checkout (JWT)
+    Gateway->>Auth: Validate JWT
+    Auth-->>Gateway: Authorized (customer)
+    Gateway->>Order: Initiate checkout
+    Order->>Cart: Fetch current cart
+    Cart-->>Order: Cart items
+    Order->>ShipInv: Validate stock for each item
+    ShipInv->>DB: Check inventory levels
+    DB-->>ShipInv: Current stock
+
+    alt Insufficient stock
+        ShipInv-->>Order: Stock validation failed
+        Order-->>UI: Order rejected (items unavailable)
+        UI-->>Customer: Out of stock error
+    else Stock available
+        ShipInv-->>Order: Stock confirmed
+        activate Order
+        Order->>Order: Calculate total<br/>(subtotal + tax + shipping)
+        Note over Order: Applies tax rules,<br/>shipping charges,<br/>coupon discounts
+        Order-->>UI: Cost breakdown
+        deactivate Order
+        UI-->>Customer: Review & fill details
+
+        Customer->>UI: Fill shipping & billing info
+        UI->>Gateway: PUT /api/orders/address
+        Gateway->>Order: Save shipping/billing
+        activate Order
+        Order->>DB: Store address info
+        DB-->>Order: Saved
+        Order-->>Gateway: Address confirmed
+        deactivate Order
+        Gateway-->>UI: Address saved
+        UI-->>Customer: Ready to pay
+
+        Customer->>UI: Confirm Purchase
+        UI->>Gateway: POST /api/payments/charge
+        Gateway->>Payment: Process payment
+        alt Payment success
+            Payment-->>Gateway: Payment confirmed
+            Gateway->>Order: Create order record
+            activate Order
+            Order->>DB: Save order document
+            DB-->>Order: Order created
+            Order->>ShipInv: Deduct inventory
+            ShipInv->>DB: Decrease stock levels
+            DB-->>ShipInv: Stock deducted
+            ShipInv->>Cache: Invalidate stock cache
+            Cache-->>ShipInv: Cache updated
+            Order->>ShipInv: Schedule shipment
+            Note over ShipInv: Shipping service schedules<br/>pickup and delivery
+            ShipInv-->>Order: Shipment scheduled
+            Order-->>Gateway: Order confirmed
+            deactivate Order
+            Gateway-->>UI: Order success
+
+            Order->>Cart: Clear cart
+            Cart->>DB: Empty cart
+            DB-->>Cart: Cart cleared
+
+            Order->>Notif: Trigger notifications
+            Notif-->>Customer: Order confirmation (Email)
+            Notif-->>Customer: Shipping updates (WhatsApp)
+            Notif-->>Merchant: New order alert
+
+            Order->>Analytics: Push order event (async)
+            Analytics->>DB: Update sales metrics
+            DB-->>Analytics: Metrics updated
+
+            UI-->>Customer: Order placed successfully
+        else Payment failed
+            Payment-->>Gateway: Payment declined
+            Gateway-->>UI: Payment error
+            UI-->>Customer: Payment failed
+        end
+    end
+    end
