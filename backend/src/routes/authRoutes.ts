@@ -3,11 +3,12 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
 import { auth, AuthRequest } from '../middleware/auth';
+import { validate, registerSchema, loginSchema } from '../middleware/validate';
 
 const router = express.Router();
 
 // Register User
-router.post('/register', async (req: any, res: Response) => {
+router.post('/register', validate(registerSchema), async (req: any, res: Response) => {
   try {
     const { name, email, password, phone, businessName, gstin, address } = req.body;
 
@@ -41,7 +42,7 @@ router.post('/register', async (req: any, res: Response) => {
     const savedUser = await newUser.save();
     
     // Create JWT
-    const JWT_SECRET = process.env.JWT_SECRET || 'riyatouch_wholesale_secret_key_2026_jwt';
+    const JWT_SECRET = process.env.JWT_SECRET || 'ISsY6b+/8xX7PK0X0P31hOy+ug1i3whEK+h+uoXZA6o=';
     const token = jwt.sign({ id: savedUser._id }, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({
@@ -63,7 +64,7 @@ router.post('/register', async (req: any, res: Response) => {
 });
 
 // Login User
-router.post('/login', async (req: any, res: Response) => {
+router.post('/login', validate(loginSchema), async (req: any, res: Response) => {
   try {
     const { email, password } = req.body;
 
@@ -84,7 +85,7 @@ router.post('/login', async (req: any, res: Response) => {
     }
 
     // Create JWT
-    const JWT_SECRET = process.env.JWT_SECRET || 'riyatouch_wholesale_secret_key_2026_jwt';
+    const JWT_SECRET = process.env.JWT_SECRET || 'ISsY6b+/8xX7PK0X0P31hOy+ug1i3whEK+h+uoXZA6o=';
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(200).json({

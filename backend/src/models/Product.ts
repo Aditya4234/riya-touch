@@ -18,13 +18,12 @@ const ProductSchema = new Schema({
   category: {
     type: String,
     required: true,
-    enum: ['Women', 'Girls'],
+    enum: ['Men', 'Women', 'Girls', 'Kids'],
     trim: true
   },
   type: {
     type: String,
     required: true,
-    enum: ['Brassieres', 'Panties'],
     trim: true
   },
   images: [{

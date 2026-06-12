@@ -56,9 +56,10 @@ export default function AdminPage() {
       if (Array.isArray(ordersData)) setOrders(ordersData);
 
       // Fetch products
-      const productsRes = await fetch(`${apiUrl}/products`);
+      const productsRes = await fetch(`${apiUrl}/products?limit=100`);
       const productsData = await productsRes.json();
-      if (Array.isArray(productsData)) setProducts(productsData);
+      const list = productsData.products || productsData;
+      if (Array.isArray(list)) setProducts(list);
 
       // Fetch low stock
       const stockRes = await fetch(`${apiUrl}/products/low-stock?threshold=10`, {

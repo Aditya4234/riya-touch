@@ -1,6 +1,7 @@
 import express, { Response } from 'express';
 import Product from '../models/Product';
 import { auth, admin } from '../middleware/auth';
+import { validate, productSchema } from '../middleware/validate';
 
 const router = express.Router();
 
@@ -27,10 +28,10 @@ router.get('/brands', async (req, res: Response) => {
   }
 });
 
-// Get all products (with optional filtering)
+// Get all products (with optional filtering and pagination)
 router.get('/', async (req: any, res: Response) => {
   try {
-    const { category, brand, type, search, isFeatured } = req.query;
+    const { category, brand, type, search, isFeatured, page = '1', limit = '50', sort } = req.query;
     const query: any = {};
 
     if (category) query.category = category;
@@ -46,8 +47,29 @@ router.get('/', async (req: any, res: Response) => {
       ];
     }
 
-    const products = await Product.find(query).sort({ createdAt: -1 });
-    res.json(products);
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    let sortOption: any = { createdAt: -1 };
+    if (sort === 'price_asc') sortOption = { wholesalePrice: 1 };
+    else if (sort === 'price_desc') sortOption = { wholesalePrice: -1 };
+    else if (sort === 'name') sortOption = { name: 1 };
+
+    const [products, total] = await Promise.all([
+      Product.find(query).sort(sortOption).skip(skip).limit(limitNum),
+      Product.countDocuments(query)
+    ]);
+
+    res.json({
+      products,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum)
+      }
+    });
   } catch (error: any) {
     res.status(500).json({ message: 'Error fetching products', error: error.message });
   }
@@ -70,13 +92,9 @@ router.get('/:id', async (req, res: Response) => {
 });
 
 // Create product (Admin only)
-router.post('/', auth, admin, async (req: any, res: Response) => {
+router.post('/', auth, admin, validate(productSchema), async (req: any, res: Response) => {
   try {
     const { name, description, brand, category, type, images, wholesalePrice, retailPrice, packSize, sizes, colors, stock, isFeatured } = req.body;
-
-    if (!name || !description || !brand || !category || !type || !wholesalePrice || !retailPrice) {
-      return res.status(400).json({ message: 'Please provide all required fields' });
-    }
 
     const newProduct = new Product({
       name,

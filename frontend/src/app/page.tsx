@@ -15,8 +15,9 @@ export default function HomePage() {
     fetch(`${apiUrl}/products?isFeatured=true`)
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data)) {
-          setFeaturedProducts(data.slice(0, 4));
+        const list = data.products || data;
+        if (Array.isArray(list)) {
+          setFeaturedProducts(list.slice(0, 4));
         }
         setLoading(false);
       })

@@ -53,8 +53,9 @@ function ProductsCatalogContent() {
     fetch(`${apiUrl}/products?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data)) {
-          setProducts(data);
+        const list = data.products || data;
+        if (Array.isArray(list)) {
+          setProducts(list);
         }
         setLoading(false);
       })
