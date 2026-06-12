@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from 'cloudinary';
-import multer from 'multer';
+import multer, { FileFilterCallback } from 'multer';
+import { Request } from 'express';
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -7,11 +8,16 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+interface UploadFile {
+  buffer: Buffer;
+  mimetype: string;
+}
+
 const storage = multer.memoryStorage();
 export const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (_req: Request, file: any, cb: FileFilterCallback) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
@@ -20,7 +26,7 @@ export const upload = multer({
   }
 });
 
-export const uploadToCloudinary = async (file: Express.Multer.File, folder: string): Promise<string> => {
+export const uploadToCloudinary = async (file: UploadFile, folder: string): Promise<string> => {
   const b64 = Buffer.from(file.buffer).toString('base64');
   const dataURI = `data:${file.mimetype};base64,${b64}`;
   const result = await cloudinary.uploader.upload(dataURI, {
