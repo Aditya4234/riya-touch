@@ -19,6 +19,20 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Root Route
+app.get('/', (req, res) => {
+  res.status(200).json({
+    name: 'Riya Touch API',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      products: '/api/products',
+      orders: '/api/orders'
+    }
+  });
+});
+
 // Health Check
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Riya Touch Backend is running' });

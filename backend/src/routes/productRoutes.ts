@@ -4,6 +4,8 @@ import { auth, admin } from '../middleware/auth';
 
 const router = express.Router();
 
+const isValidObjectId = (id: string) => /^[0-9a-fA-F]{24}$/.test(id);
+
 // Get low stock products (Admin only)
 router.get('/low-stock', auth, admin, async (req: any, res: Response) => {
   try {
@@ -54,6 +56,9 @@ router.get('/', async (req: any, res: Response) => {
 // Get a single product
 router.get('/:id', async (req, res: Response) => {
   try {
+    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: 'Invalid product ID format' });
+    }
     const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
@@ -99,6 +104,9 @@ router.post('/', auth, admin, async (req: any, res: Response) => {
 // Update product (Admin only)
 router.put('/:id', auth, admin, async (req: any, res: Response) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid product ID format' });
+    }
     const product = await Product.findByIdAndUpdate(
       req.params.id,
       { $set: req.body },
@@ -118,6 +126,9 @@ router.put('/:id', auth, admin, async (req: any, res: Response) => {
 // Delete product (Admin only)
 router.delete('/:id', auth, admin, async (req: any, res: Response) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid product ID format' });
+    }
     const product = await Product.findByIdAndDelete(req.params.id);
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
