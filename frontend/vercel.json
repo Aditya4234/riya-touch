@@ -1,0 +1,12 @@
+{
+  "framework": "nextjs",
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://riya-touch.onrender.com/api"
+  },
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://riya-touch.onrender.com/api/:path*"
+    }
+  ]
+}
