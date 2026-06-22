@@ -40,7 +40,7 @@ const statusBadge: Record<string, { color: string; bg: string; icon: React.React
 
 export default function OrdersPage() {
   const router = useRouter();
-  const { token, apiUrl } = useAuth();
+  const { token, apiUrl, loading: authLoading } = useAuth();
   const { addBulkToCart } = useCart();
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,12 +48,13 @@ export default function OrdersPage() {
   const [actionError, setActionError] = useState('');
 
   useEffect(() => {
+    if (authLoading) return;
     if (!token) {
       router.push('/login?redirect=/orders');
       return;
     }
     fetchOrders();
-  }, [token]);
+  }, [token, authLoading]);
 
   const fetchOrders = async () => {
     try {
@@ -109,29 +110,34 @@ export default function OrdersPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setActionError('');
-    try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result as string;
-        const res = await fetch(`${apiUrl}/orders/${orderId}/receipt`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ paymentReceipt: base64 }),
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+      fetch(`${apiUrl}/orders/${orderId}/receipt`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ paymentReceipt: base64 }),
+      })
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message);
+          setActionMsg('Payment receipt uploaded!');
+          fetchOrders();
+          setTimeout(() => setActionMsg(''), 3000);
+        })
+        .catch((err) => {
+          setActionError(err.message);
+          setTimeout(() => setActionError(''), 3000);
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message);
-        setActionMsg('Payment receipt uploaded!');
-        fetchOrders();
-        setTimeout(() => setActionMsg(''), 3000);
-      };
-      reader.readAsDataURL(file);
-    } catch (err: any) {
-      setActionError(err.message);
+    };
+    reader.onerror = () => {
+      setActionError('Failed to read file');
       setTimeout(() => setActionError(''), 3000);
-    }
+    };
+    reader.readAsDataURL(file);
   };
 
   if (loading) {

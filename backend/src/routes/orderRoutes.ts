@@ -1,7 +1,10 @@
 import express, { Response } from 'express';
+import mongoose from 'mongoose';
 import Order from '../models/Order';
 import Product from '../models/Product';
 import { auth, admin, AuthRequest } from '../middleware/auth';
+
+const MIN_ORDER_VALUE = 5000;
 
 const router = express.Router();
 
@@ -22,55 +25,74 @@ router.post('/', auth, async (req: AuthRequest, res: Response) => {
     let totalItems = 0;
     const finalItems = [];
 
-    // Verify products and calculate price
-    for (const item of items) {
-      const dbProduct = await Product.findById(item.productId);
-      if (!dbProduct) {
-        return res.status(404).json({ message: `Product ${item.productId} not found` });
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Verify products and calculate price
+      for (const item of items) {
+        const dbProduct = await Product.findById(item.productId).session(session);
+        if (!dbProduct) {
+          await session.abortTransaction();
+          return res.status(404).json({ message: `Product ${item.productId} not found` });
+        }
+
+        // Check stock
+        if (dbProduct.stock < item.packQuantity) {
+          await session.abortTransaction();
+          return res.status(400).json({ message: `Insufficient stock for product ${dbProduct.name}. Available packs: ${dbProduct.stock}` });
+        }
+
+        const itemCost = dbProduct.wholesalePrice * dbProduct.packSize * item.packQuantity;
+        calculatedTotal += itemCost;
+        totalPacks += item.packQuantity;
+        totalItems += item.packQuantity * dbProduct.packSize;
+
+        finalItems.push({
+          product: dbProduct._id,
+          size: item.size,
+          color: item.color || 'Assorted',
+          packQuantity: item.packQuantity,
+          packSize: dbProduct.packSize,
+          wholesalePrice: dbProduct.wholesalePrice
+        });
+
+        // Deduct stock
+        dbProduct.stock -= item.packQuantity;
+        await dbProduct.save({ session });
       }
 
-      // Check stock
-      if (dbProduct.stock < item.packQuantity) {
-        return res.status(400).json({ message: `Insufficient stock for product ${dbProduct.name}. Available packs: ${dbProduct.stock}` });
+      // Validate minimum order value
+      if (calculatedTotal < MIN_ORDER_VALUE) {
+        await session.abortTransaction();
+        return res.status(400).json({ message: `Minimum order value is ₹${MIN_ORDER_VALUE}` });
       }
 
-      const itemCost = dbProduct.wholesalePrice * dbProduct.packSize * item.packQuantity;
-      calculatedTotal += itemCost;
-      totalPacks += item.packQuantity;
-      totalItems += item.packQuantity * dbProduct.packSize;
-
-      finalItems.push({
-        product: dbProduct._id,
-        size: item.size,
-        color: item.color || 'Assorted',
-        packQuantity: item.packQuantity,
-        packSize: dbProduct.packSize,
-        wholesalePrice: dbProduct.wholesalePrice
+      // Create order object
+      const newOrder = new Order({
+        user: req.user.id,
+        items: finalItems,
+        totalAmount: calculatedTotal,
+        totalPacks,
+        totalItems,
+        businessName: businessName || req.user.businessName || req.user.name,
+        gstin: gstin || req.user.gstin || '',
+        shippingAddress,
+        paymentMethod,
+        paymentStatus: 'Pending',
+        paymentReceipt: paymentReceipt || '',
+        status: 'Pending'
       });
 
-      // Deduct stock
-      dbProduct.stock -= item.packQuantity;
-      await dbProduct.save();
+      await newOrder.save({ session });
+      await session.commitTransaction();
+      res.status(201).json(newOrder);
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
     }
-
-    // Create order object
-    const newOrder = new Order({
-      user: req.user.id,
-      items: finalItems,
-      totalAmount: calculatedTotal,
-      totalPacks,
-      totalItems,
-      businessName: businessName || req.user.businessName || req.user.name,
-      gstin: gstin || req.user.gstin || '',
-      shippingAddress,
-      paymentMethod,
-      paymentStatus: paymentMethod === 'COD' || paymentMethod === 'WhatsApp Checkout' ? 'Pending' : 'Pending',
-      paymentReceipt: paymentReceipt || '',
-      status: 'Pending'
-    });
-
-    const savedOrder = await newOrder.save();
-    res.status(201).json(savedOrder);
   } catch (error: any) {
     res.status(500).json({ message: 'Error placing order', error: error.message });
   }

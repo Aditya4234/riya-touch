@@ -13,6 +13,7 @@ function ProductsCatalogContent() {
 
   const [products, setProducts] = useState<ProductType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
   
   // Available filter options
   const [brands, setBrands] = useState<string[]>([]);
@@ -44,6 +45,7 @@ function ProductsCatalogContent() {
   // Fetch Products based on active filters
   useEffect(() => {
     setLoading(true);
+    setFetchError('');
     const params = new URLSearchParams();
     if (selectedCategory) params.append('category', selectedCategory);
     if (selectedBrand) params.append('brand', selectedBrand);
@@ -61,6 +63,7 @@ function ProductsCatalogContent() {
       })
       .catch((err) => {
         console.error('Error fetching filtered products:', err);
+        setFetchError('Failed to load products. Please try again.');
         setLoading(false);
       });
   }, [apiUrl, selectedCategory, selectedBrand, selectedType, search]);
@@ -229,6 +232,18 @@ function ProductsCatalogContent() {
                   <div className="bg-stone-200 h-10 w-full rounded mt-8"></div>
                 </div>
               ))}
+            </div>
+          ) : fetchError ? (
+            <div className="bg-white p-12 text-center text-stone-500 border border-stone-200 rounded-lg shadow-xs flex flex-col items-center justify-center space-y-4">
+              <span className="text-4xl">⚠️</span>
+              <h3 className="font-bold text-stone-850">Failed to load products</h3>
+              <p className="text-xs max-w-xs text-stone-400">{fetchError}</p>
+              <button
+                onClick={handleClearFilters}
+                className="bg-rose-900 text-white px-4 py-2 rounded text-xs font-semibold hover:bg-rose-800 transition cursor-pointer"
+              >
+                Try Again
+              </button>
             </div>
           ) : products.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -9,7 +9,7 @@ import Link from 'next/link';
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, totalAmount, totalPacks, totalItems, clearCart, isMinOrderMet } = useCart();
+  const { cart, cartLoaded, totalAmount, totalPacks, totalItems, clearCart, isMinOrderMet } = useCart();
   const { user, token, apiUrl } = useAuth();
 
   // Form states
@@ -30,12 +30,13 @@ export default function CheckoutPage() {
 
   // Redirect if cart is empty or min order not met
   useEffect(() => {
+    if (!cartLoaded) return;
     if (cart.length === 0) {
       router.push('/cart');
     } else if (!isMinOrderMet) {
       router.push('/cart');
     }
-  }, [cart, isMinOrderMet, router]);
+  }, [cart, cartLoaded, isMinOrderMet, router]);
 
   // Autofill user profile data
   useEffect(() => {

@@ -7,7 +7,7 @@ import { ShieldAlert, Plus, Trash2, Check, ExternalLink, Calendar, Download, Ale
 
 export default function AdminPage() {
   const router = useRouter();
-  const { user, token, apiUrl } = useAuth();
+  const { user, token, apiUrl, loading: authLoading } = useAuth();
 
   // Tab Control
   const [activeTab, setActiveTab] = useState<'orders' | 'products'>('orders');
@@ -35,14 +35,13 @@ export default function AdminPage() {
   const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
-    // Access validation
+    if (authLoading) return;
     if (!user || user.role !== 'admin') {
       router.push('/');
       return;
     }
-
     fetchAdminData();
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   const fetchAdminData = async () => {
     setLoading(true);

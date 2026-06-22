@@ -129,8 +129,10 @@ export default function ProductDetailPage({ params }: ProductPageProps) {
     }
   };
 
-  const packPrice = product.wholesalePrice * product.packSize;
-  const savingPercent = Math.round(((product.retailPrice - product.wholesalePrice) / product.retailPrice) * 100);
+  const packPrice = (product.wholesalePrice ?? 0) * (product.packSize ?? 0);
+  const savingPercent = product.retailPrice > 0
+    ? Math.round(((product.retailPrice - product.wholesalePrice) / product.retailPrice) * 100)
+    : 0;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-grow">

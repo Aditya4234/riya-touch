@@ -1,6 +1,5 @@
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Eye, Percent } from 'lucide-react';
 
 export interface ProductType {
@@ -8,7 +7,7 @@ export interface ProductType {
   name: string;
   description: string;
   brand: string;
-  category: 'Women' | 'Girls';
+  category: 'Men' | 'Women' | 'Girls' | 'Kids';
   type: string;
   images: string[];
   wholesalePrice: number;

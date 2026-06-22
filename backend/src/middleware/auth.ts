@@ -6,6 +6,14 @@ export interface AuthRequest extends Request {
   user?: any;
 }
 
+const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is required');
+  }
+  return secret;
+};
+
 export const auth = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -14,7 +22,7 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction) 
       return res.status(401).json({ message: 'No authentication token, access denied' });
     }
 
-    const JWT_SECRET = process.env.JWT_SECRET || 'ISsY6b+/8xX7PK0X0P31hOy+ug1i3whEK+h+uoXZA6o=';
+    const JWT_SECRET = getJwtSecret();
     const decoded: any = jwt.verify(token, JWT_SECRET);
     
     const user = await User.findById(decoded.id).select('-password');

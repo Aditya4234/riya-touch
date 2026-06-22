@@ -37,12 +37,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('riya_touch_token');
-    const storedUser = localStorage.getItem('riya_touch_user');
+    try {
+      const storedToken = localStorage.getItem('riya_touch_token');
+      const storedUser = localStorage.getItem('riya_touch_user');
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      if (storedToken && storedUser) {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      }
+    } catch {
+      localStorage.removeItem('riya_touch_token');
+      localStorage.removeItem('riya_touch_user');
     }
     setLoading(false);
   }, []);

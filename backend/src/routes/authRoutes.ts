@@ -42,8 +42,8 @@ router.post('/register', validate(registerSchema), async (req: any, res: Respons
     const savedUser = await newUser.save();
     
     // Create JWT
-    const JWT_SECRET = process.env.JWT_SECRET || 'ISsY6b+/8xX7PK0X0P31hOy+ug1i3whEK+h+uoXZA6o=';
-    const token = jwt.sign({ id: savedUser._id }, JWT_SECRET, { expiresIn: '7d' });
+    if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
+    const token = jwt.sign({ id: savedUser._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({
       token,
@@ -85,8 +85,8 @@ router.post('/login', validate(loginSchema), async (req: any, res: Response) => 
     }
 
     // Create JWT
-    const JWT_SECRET = process.env.JWT_SECRET || 'ISsY6b+/8xX7PK0X0P31hOy+ug1i3whEK+h+uoXZA6o=';
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' });
+    if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.status(200).json({
       token,

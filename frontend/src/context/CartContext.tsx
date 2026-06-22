@@ -16,6 +16,7 @@ export interface CartItem {
 
 interface CartContextType {
   cart: CartItem[];
+  cartLoaded: boolean;
   addToCart: (item: CartItem) => void;
   addBulkToCart: (items: CartItem[]) => void;
   removeFromCart: (productId: string, size: string, color: string) => void;
@@ -32,7 +33,8 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
-  const minOrderValue = 5000; // Wholesale minimum order value in Rupees
+  const [cartLoaded, setCartLoaded] = useState(false);
+  const minOrderValue = parseInt(process.env.NEXT_PUBLIC_MIN_ORDER_VALUE || '5000');
 
   useEffect(() => {
     const storedCart = localStorage.getItem('riya_touch_cart');
@@ -43,6 +45,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Failed to parse cart');
       }
     }
+    setCartLoaded(true);
   }, []);
 
   const saveCart = (newCart: CartItem[]) => {
@@ -139,6 +142,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <CartContext.Provider
       value={{
         cart,
+        cartLoaded,
         addToCart,
         addBulkToCart,
         removeFromCart,
