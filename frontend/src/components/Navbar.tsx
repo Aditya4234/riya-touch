@@ -58,7 +58,7 @@ export default function Navbar() {
           
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
-            <Link href="/" className="flex flex-col">
+            <Link href={user ? "/dashboard" : "/"} className="flex flex-col">
               <span className="text-xl sm:text-2xl font-bold tracking-tight text-rose-900 font-serif">
                 RIYA TOUCH
               </span>
